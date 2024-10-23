@@ -15,13 +15,19 @@ import javax.sound.sampled.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import javax.swing.table.DefaultTableModel;
 
 
 //VENTANA HEREDA DE JFRAME PARA CREAR LA INTERFAZ GRAFICA, SE USA EXTENDS PARA HEREDAR
 public class Ventana2 extends JFrame{
     public JPanel panel;
     private JLabel resultadosLabel;
-    private JList<String> listaCanciones;
+    private JTable tablaCanciones;
+    private DefaultTableModel modeloTabla;
+    
+    private Clip clip; // Para controlar la reproducción
+    private ArrayList<String> listaCanciones = new ArrayList<>(); // Lista de canciones
+    private int cancionActual = -1; // Índice de la canción actual
      
     //METODO CONSTRUCTOR 
     public Ventana2(){
@@ -48,6 +54,7 @@ public class Ventana2 extends JFrame{
         panel();
         etiquetas();
         botones();
+        tablaCanciones();
     }
     
     //<------------------- PANEL ------------------------->
@@ -126,76 +133,155 @@ private void botones() {
     JButton boton3 = new JButton("Buscar mus");
         boton3.setFont(new Font("times new roman", 1, 25));
         boton3.setBounds(150, 200, 170, 40);
-        boton3.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                buscarArchivosMP3();
-            }
-        });
+        boton3.addActionListener(e -> buscarArchivosMP3());
         panel.add(boton3);
-    
+
         JButton botonReproducir = new JButton("A escuchar");
-    botonReproducir.setFont(new Font("times new roman", 1, 25));
-    botonReproducir.setBounds(500, 200, 170, 40);
-    botonReproducir.addActionListener(new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            String cancionSeleccionada = listaCanciones.getSelectedValue();
-            if (cancionSeleccionada != null) {
+        botonReproducir.setFont(new Font("times new roman", 1, 25));
+        botonReproducir.setBounds(500, 200, 170, 40);
+        botonReproducir.addActionListener(e -> {
+            int filaSeleccionada = tablaCanciones.getSelectedRow();
+            if (filaSeleccionada != -1) {
+                String cancionSeleccionada = modeloTabla.getValueAt(filaSeleccionada, 0).toString();
                 String rutaArchivo = "C:\\Users\\Mayby\\Desktop\\USB Oliver\\Contenido\\" + cancionSeleccionada;
                 reproducirAudio(rutaArchivo);
             } else {
                 JOptionPane.showMessageDialog(panel, "Por favor, selecciona una canción.");
             }
-        }
-    });
-    panel.add(botonReproducir);
-}
-    private void buscarArchivosMP3() {
-        File carpeta = new File("C:\\Users\\Mayby\\Desktop\\USB Oliver\\Contenido");
-        File[] archivos = carpeta.listFiles((dir, name) -> name.toLowerCase().endsWith(".wav"));
-
-        ArrayList<String> nombresCanciones = new ArrayList<>();
-        long tamañoTotal = 0;
-
-        if (archivos != null) {
-            for (File archivo : archivos) {
-                nombresCanciones.add(archivo.getName());
-                tamañoTotal += archivo.length()/1000000;
-            }
-        }
-
-        listaCanciones = new JList<>(nombresCanciones.toArray(new String[0]));
-        listaCanciones.setBounds(150, 250, 600, 150);
-        listaCanciones.setBackground(Color.lightGray);
-        panel.add(listaCanciones);
-
-        // Actualizar la etiqueta con la cantidad de archivos y el tamaño total
-        int cantidadArchivos = nombresCanciones.size();
-        resultadosLabel.setText("Cantidad de archivos: " + cantidadArchivos + " | Tamaño total: " + tamañoTotal + " mb aprox");
+        });
+        panel.add(botonReproducir);
         
-        // Actualizar el panel para mostrar los nuevos componentes
-        panel.revalidate();
-        panel.repaint();
-    }
-    private void reproducirAudio(String rutaArchivo) {
-    try {
-        File audioFile = new File(rutaArchivo);
-        if (!audioFile.exists()) {
-            System.out.println("El archivo no existe: " + rutaArchivo);
-            return;
-        }
+         // Botón para parar música
+        JButton botonParar = new JButton("Parar");
+        botonParar.setFont(new Font("times new roman", 1, 25));
+        botonParar.setBounds(150, 450, 170, 40);
+        botonParar.addActionListener(e -> pararMusica());
+        panel.add(botonParar);
 
-        AudioInputStream audioStream = AudioSystem.getAudioInputStream(audioFile);
-        Clip clip = AudioSystem.getClip();
-        clip.open(audioStream);
-        clip.start();
-    } catch (UnsupportedAudioFileException e) {
-        System.out.println("El formato de archivo no es compatible: " + e.getMessage());
-    } catch (IOException e) {
-        System.out.println("Error de entrada/salida: " + e.getMessage());
-    } catch (LineUnavailableException e) {
-        System.out.println("No hay líneas de audio disponibles: " + e.getMessage());
+        // Botón para siguiente canción
+        JButton botonSiguiente = new JButton("Siguiente");
+        botonSiguiente.setFont(new Font("times new roman", 1, 25));
+        botonSiguiente.setBounds(400, 450, 170, 40);
+        botonSiguiente.addActionListener(e -> siguienteCancion());
+        panel.add(botonSiguiente);
+
+        // Botón para anterior canción
+        JButton botonAnterior = new JButton("Anterior");
+        botonAnterior.setFont(new Font("times new roman", 1, 25));
+        botonAnterior.setBounds(150, 500, 170, 40);
+        botonAnterior.addActionListener(e -> anteriorCancion());
+        panel.add(botonAnterior);
+
+        // Botón para reanudar música
+        JButton botonReanudar = new JButton("Reanudar");
+        botonReanudar.setFont(new Font("times new roman", 1, 25));
+        botonReanudar.setBounds(400, 500, 170, 40);
+        botonReanudar.addActionListener(e -> reanudarMusica());
+        panel.add(botonReanudar);
     }
+
+    // Inicializar tabla vacía
+    private void tablaCanciones() {
+        modeloTabla = new DefaultTableModel(new String[]{"Canción"}, 0);
+        tablaCanciones = new JTable(modeloTabla);
+        tablaCanciones.setBackground(Color.lightGray);
+        JScrollPane scrollPane = new JScrollPane(tablaCanciones);
+        scrollPane.setBounds(150, 250, 600, 150);
+        panel.add(scrollPane);
+    }
+
+    private void buscarArchivosMP3() {
+    File carpeta = new File("C:\\Users\\Mayby\\Desktop\\USB Oliver\\Contenido");
+    File[] archivos = carpeta.listFiles((dir, name) -> name.toLowerCase().endsWith(".wav"));
+
+    listaCanciones.clear(); // Limpiar la lista antes de agregar nuevas canciones
+    ArrayList<String[]> nombresCanciones = new ArrayList<>();
+    long tamañoTotal = 0;
+
+    if (archivos != null) {
+        for (File archivo : archivos) {
+            nombresCanciones.add(new String[]{archivo.getName()});
+            listaCanciones.add(archivo.getAbsolutePath()); // Agregar ruta a la lista
+            tamañoTotal += archivo.length() / 1000000;
+        }
+    }
+
+    // Llenar la tabla con las canciones encontradas
+    modeloTabla.setRowCount(0); // Limpiar la tabla antes de agregar nuevas filas
+    for (String[] cancion : nombresCanciones) {
+        modeloTabla.addRow(cancion);
+    }
+
+    int cantidadArchivos = nombresCanciones.size();
+    resultadosLabel.setText("Cantidad de archivos: " + cantidadArchivos + " | Tamaño total: " + tamañoTotal + " mb aprox");
+
+    panel.revalidate();
+    panel.repaint();
 }
+
+    private void reproducirCancion() {
+        int filaSeleccionada = tablaCanciones.getSelectedRow();
+        if (filaSeleccionada != -1) {
+            cancionActual = filaSeleccionada;
+            String rutaArchivo = listaCanciones.get(cancionActual);
+            reproducirAudio(rutaArchivo);
+        } else {
+            JOptionPane.showMessageDialog(panel, "Por favor, selecciona una canción.");
+        }
+    }
+
+    private void reproducirAudio(String rutaArchivo) {
+        try {
+            pararMusica(); // Parar cualquier música que esté sonando
+            File audioFile = new File(rutaArchivo);
+            if (!audioFile.exists()) {
+                System.out.println("El archivo no existe: " + rutaArchivo);
+                return;
+            }
+
+            AudioInputStream audioStream = AudioSystem.getAudioInputStream(audioFile);
+            clip = AudioSystem.getClip();
+            clip.open(audioStream);
+            clip.start();
+        } catch (UnsupportedAudioFileException e) {
+            System.out.println("El formato de archivo no es compatible: " + e.getMessage());
+        } catch (IOException e) {
+            System.out.println("Error de entrada/salida: " + e.getMessage());
+        } catch (LineUnavailableException e) {
+            System.out.println("No hay líneas de audio disponibles: " + e.getMessage());
+        }
+    }
+
+    private void pararMusica() {
+        if (clip != null && clip.isRunning()) {
+            clip.stop();
+        }
+    }
+
+    private void reanudarMusica() {
+        if (clip != null && !clip.isRunning()) {
+            clip.start();
+        }
+    }
+
+    private void siguienteCancion() {
+        if (listaCanciones.isEmpty()) return;
+
+        cancionActual = (cancionActual + 1) % listaCanciones.size();
+        reproducirCancionPorIndice(cancionActual);
+    }
+
+    private void anteriorCancion() {
+        if (listaCanciones.isEmpty()) return;
+
+        cancionActual = (cancionActual - 1 + listaCanciones.size()) % listaCanciones.size();
+        reproducirCancionPorIndice(cancionActual);
+    }
+
+    private void reproducirCancionPorIndice(int indice) {
+        if (indice >= 0 && indice < listaCanciones.size()) {
+            String rutaArchivo = listaCanciones.get(indice);
+            reproducirAudio(rutaArchivo);
+        }
+    }
 }
