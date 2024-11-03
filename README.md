@@ -15,7 +15,7 @@ Este es mi Proyecto de programación II de la umg 4to semestre.
 
 ## Documentación
 
-[Documentación](https://drive.google.com/drive/folders/1J-WPCeQFplvb8Mt4RL0mlwc-AjcZP5vi?usp=drive_link)
+[Documentación]([https://drive.google.com/drive/folders/1J-WPCeQFplvb8Mt4RL0mlwc-AjcZP5vi?usp=drive_link](https://drive.google.com/drive/folders/1J-WPCeQFplvb8Mt4RL0mlwc-AjcZP5vi?usp=sharing))
 
 
 ## Caracteristicas del Proyecto
